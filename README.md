@@ -217,7 +217,6 @@ A sample configuration file with all options is available [here](https://github.
 * `no-construct` disallows access to the constructors of `String`, `Number`, and `Boolean`.
 * `no-constructor-vars` disallows the `public` and `private` modifiers for constructor parameters.
 * `no-debugger` disallows `debugger` statements.
-* `no-duplicate-key` disallows duplicate keys in object literals.
 * `no-duplicate-variable` disallows duplicate variable declarations in the same block scope.
 * `no-empty` disallows empty blocks.
 * `no-eval` disallows `eval` function invocations.
