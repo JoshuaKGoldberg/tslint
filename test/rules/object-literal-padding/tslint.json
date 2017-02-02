@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "object-literal-padding": [true, "padding"]
+  },
+  "jsRules": {
+    "object-literal-padding": [true, "padding"]
+  }
+}
