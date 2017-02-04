@@ -53,6 +53,27 @@ export class Rule extends Lint.Rules.AbstractRule {
 
 class ObjectLiteralPaddingWalker extends Lint.RuleWalker {
     protected visitObjectLiteralExpression(node: ts.ObjectLiteralExpression) {
+        const children = node.getChildren();
+        const startingBracket = children[0];
+        const firstMember = children[1];
+        const lastMember = children[children.length - 2];
+        const endingBracket = children[children.length - 1];
+
+        this.checkTokenObject(startingBracket, firstMember.getStart() - startingBracket.getEnd());
+        this.checkTokenObject(endingBracket, lastMember.getEnd() - endingBracket.getStart());
+
         super.visitObjectLiteralExpression(node);
+    }
+
+    private checkTokenObject(node: ts.Node, extraWidth: number) {
+        if (extraWidth === 0) {
+            if (this.hasOption(OPTION_PADDING)) {
+                this.addFailureAt(node.getStart(), extraWidth + 1, Rule.FAILURE_SHOULD_BE_PADDED);
+            }
+        } else {
+            if (this.hasOption(OPTION_NO_PADDING)) {
+                this.addFailureAt(node.getStart(), extraWidth + 1, Rule.FAILURE_SHOULD_NOT_BE_PADDED);
+            }
+        }
     }
 }

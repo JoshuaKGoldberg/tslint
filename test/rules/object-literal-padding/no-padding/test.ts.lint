@@ -1,0 +1,25 @@
+import {aaa, bbb} from "ccc";
+
+import { aaa, bbb} from "ccc";
+       ~~       [0]
+
+import {aaa, bbb } from "ccc";
+                ~~       [0]
+
+import { aaa, bbb } from "ccc";
+       ~~       [0]
+                 ~~       [0]
+
+const aaa = {aaa, bbb};
+
+const aaa = { aaa, bbb};
+            ~~        [0]
+
+const aaa = {aaa, bbb };
+                     ~~       [0]
+
+const aaa = { aaa, bbb };
+            ~~      [0]
+                      ~~       [0]
+
+[0]: Object literals should not be padded with whitespace.
