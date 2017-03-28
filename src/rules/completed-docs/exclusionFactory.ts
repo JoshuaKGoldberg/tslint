@@ -27,37 +27,37 @@ export class ExclusionFactory {
         const exclusionsMap: Map<DocType, Array<Exclusion<any>>> = new Map();
 
         for (const ruleArgument of ruleArguments) {
-            this.addRequirements(exclusionsMap, ruleArgument);
+            this.addExclusions(exclusionsMap, ruleArgument);
         }
 
         return exclusionsMap;
     }
 
-    private addRequirements(requirementsMap: Map<DocType, Array<Exclusion<any>>>, descriptors: DocType | IExclusionDescriptors) {
+    private addExclusions(exclusionsMap: Map<DocType, Array<Exclusion<any>>>, descriptors: DocType | IExclusionDescriptors) {
         if (typeof descriptors === "string") {
-            requirementsMap.set(descriptors, this.createRequirementsForDocType(descriptors, {}));
+            exclusionsMap.set(descriptors, this.createExclusionsForDocType(descriptors, {}));
         } else {
             for (const docType in descriptors) {
                 if (descriptors.hasOwnProperty(docType)) {
-                    requirementsMap.set(docType as DocType, this.createRequirementsForDocType(docType as DocType, descriptors[docType]));
+                    exclusionsMap.set(docType as DocType, this.createExclusionsForDocType(docType as DocType, descriptors[docType]));
                 }
             }
         }
     }
 
-    private createRequirementsForDocType(docType: DocType, descriptor: ExclusionDescriptor) {
-        const requirements = [];
+    private createExclusionsForDocType(docType: DocType, descriptor: ExclusionDescriptor) {
+        const exclusions = [];
 
         if (docType === "methods" || docType === "properties") {
-            requirements.push(new ClassExclusion(descriptor));
+            exclusions.push(new ClassExclusion(descriptor));
         } else {
-            requirements.push(new BlockExclusion(descriptor));
+            exclusions.push(new BlockExclusion(descriptor));
         }
 
         if ((descriptor as ITagExclusionDescriptor).tags) {
-            requirements.push(new TagExclusion(descriptor));
+            exclusions.push(new TagExclusion(descriptor));
         }
 
-        return requirements;
+        return exclusions;
     }
 }
