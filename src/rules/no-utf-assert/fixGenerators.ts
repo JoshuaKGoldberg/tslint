@@ -16,6 +16,7 @@
  */
 
 import { IFixGenerator } from "./fixGenerator";
+import { fixUtfAssertDoesNotThrow } from "./fixUtfAssertDoesNotThrow";
 import { fixUtfAssertEqual } from "./fixUtfAssertEqual";
 import { fixUtfAssertFalse } from "./fixUtfAssertFalse";
 import { fixUtfAssertNotEqual } from "./fixUtfAssertNotEqual";
@@ -26,6 +27,7 @@ export interface IFixGenerators {
 }
 
 export const FixGenerators: IFixGenerators = {
+    DoesNotThrow: fixUtfAssertDoesNotThrow,
     Equal: fixUtfAssertEqual,
     False: fixUtfAssertFalse,
     NotEqual: fixUtfAssertNotEqual,

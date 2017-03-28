@@ -1,0 +1,2 @@
+UTF.Assert.DoesNotThrow("message", method);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  [Use chai.assert.doesNotThrow instead of UTF.Assert.DoesNotThrow]

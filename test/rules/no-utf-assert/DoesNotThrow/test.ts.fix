@@ -1,0 +1,1 @@
+chai.assert.doesNotThrow("method", "message");

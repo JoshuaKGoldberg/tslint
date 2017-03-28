@@ -15,10 +15,19 @@
  * limitations under the License.
  */
 
-export const UtfToChaiMethods: { [i: string]: string } = {
-    DoesNotThrow: "doesNotThrow",
-    Equal: "strictEqual",
-    False: "isFalse",
-    NotEqual: "notEqual",
-    True: "isTrue",
-};
+import * as ts from "typescript";
+
+import * as Lint from "../../index";
+
+export function fixUtfAssertDoesNotThrow(parameters: ts.Node[]): Lint.Replacement[] {
+    return [
+        Lint.Replacement.replaceFromTo(
+            parameters[0].getStart(),
+            parameters[0].getEnd(),
+            parameters[2].getText()),
+        Lint.Replacement.replaceFromTo(
+            parameters[2].getStart(),
+            parameters[2].getEnd(),
+            parameters[0].getText()),
+    ];
+}
