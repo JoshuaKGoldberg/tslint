@@ -1,0 +1,5 @@
+{
+  "rules": {
+    "no-utf-assert": true
+  }
+}

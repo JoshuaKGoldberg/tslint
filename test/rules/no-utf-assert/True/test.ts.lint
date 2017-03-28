@@ -1,0 +1,4 @@
+const value = false;
+
+UTF.Assert.True("lipsum", value);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  [Use chai.assert.isTrue instead of True]
