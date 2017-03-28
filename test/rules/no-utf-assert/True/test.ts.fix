@@ -1,3 +1,1 @@
-const value = false;
-
-chai.assert.isTrue(value, "lipsum");
+chai.assert.isTrue("value", "message");

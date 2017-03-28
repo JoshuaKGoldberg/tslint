@@ -1,0 +1,2 @@
+UTF.Assert.NotEqual("message", "expected", "actual");
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  [Use chai.assert.notEqual instead of UTF.Assert.NotEqual]

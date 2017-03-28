@@ -16,6 +16,8 @@
  */
 
 export const UtfToChaiMethods: { [i: string]: string } = {
+    Equal: "strictEqual",
     False: "isFalse",
+    NotEqual: "notEqual",
     True: "isTrue",
 };

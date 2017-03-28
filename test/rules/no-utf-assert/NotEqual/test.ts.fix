@@ -1,0 +1,1 @@
+chai.assert.notEqual("actual", "expected", "message");

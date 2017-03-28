@@ -60,7 +60,7 @@ class Walker extends Lint.RuleWalker {
     }
 
     private generateFailureString(expressionText: string, utfAssertion: string) {
-        return `Use chai.assert.${UtfToChaiMethods[expressionText]} instead of ${utfAssertion}`;
+        return `Use chai.assert.${UtfToChaiMethods[utfAssertion]} instead of ${expressionText}`;
     }
 
     private generateFix(node: ts.CallExpression, expressionText: string, utfAssertion: string) {

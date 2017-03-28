@@ -15,19 +15,19 @@
  * limitations under the License.
  */
 
-import { IFixGenerator } from "./fixGenerator";
-import { fixUtfAssertEqual } from "./fixUtfAssertEqual";
-import { fixUtfAssertFalse } from "./fixUtfAssertFalse";
-import { fixUtfAssertNotEqual } from "./fixUtfAssertNotEqual";
-import { fixUtfAssertTrue } from "./fixUtfAssertTrue";
+import * as ts from "typescript";
 
-export interface IFixGenerators {
-    [i: string]: IFixGenerator;
+import * as Lint from "../../index";
+
+export function fixUtfAssertNotEqual(parameters: ts.Node[]): Lint.Replacement[] {
+    return [
+        Lint.Replacement.replaceFromTo(
+            parameters[0].getStart(),
+            parameters[0].getEnd(),
+            parameters[4].getText()),
+        Lint.Replacement.replaceFromTo(
+            parameters[4].getStart(),
+            parameters[4].getEnd(),
+            parameters[0].getText()),
+    ];
 }
-
-export const FixGenerators: IFixGenerators = {
-    Equal: fixUtfAssertEqual,
-    False: fixUtfAssertFalse,
-    NotEqual: fixUtfAssertNotEqual,
-    True: fixUtfAssertTrue,
-};
