@@ -19,20 +19,9 @@ import * as ts from "typescript";
 
 import * as Lint from "../index";
 
-export interface IBlockRequirementDescriptor {
-    visibilities?: Visibility[];
-}
-
-export interface IClassRequirementDescriptor {
-    locations?: Location[];
-    privacies?: Privacy[];
-}
-
-export type RequirementDescriptor = IBlockRequirementDescriptor | IClassRequirementDescriptor;
-
-export interface IRequirementDescriptors {
-    [type: string /* DocType */]: RequirementDescriptor;
-}
+import { IExclusion } from "./completed-docs/exclusion";
+import { IExclusionDescriptors } from "./completed-docs/exclusionDescriptors";
+import { ExclusionFactory } from "./completed-docs/exclusionFactory";
 
 export const ALL = "all";
 
@@ -46,6 +35,7 @@ export const ARGUMENT_PROPERTIES = "properties";
 export const ARGUMENT_TYPES = "types";
 export const ARGUMENT_VARIABLES = "variables";
 
+export const DESCRIPTOR_TAGS = "tags";
 export const DESCRIPTOR_LOCATIONS = "locations";
 export const DESCRIPTOR_PRIVACIES = "privacies";
 export const DESCRIPTOR_VISIBILITIES = "visibilities";
@@ -56,6 +46,9 @@ export const LOCATION_STATIC = "static";
 export const PRIVACY_PRIVATE = "private";
 export const PRIVACY_PROTECTED = "protected";
 export const PRIVACY_PUBLIC = "public";
+
+export const TAGS_FOR_CONTENT = "content";
+export const TAGS_FOR_EXISTENCE = "exists";
 
 export const VISIBILITY_EXPORTED = "exported";
 export const VISIBILITY_INTERNAL = "internal";
@@ -86,20 +79,54 @@ export type Visibility = All
     | typeof VISIBILITY_EXPORTED
     | typeof VISIBILITY_INTERNAL;
 
-type BlockOrClassRequirement = BlockRequirement | ClassRequirement;
-
 export class Rule extends Lint.Rules.TypedRule {
     public static FAILURE_STRING_EXIST = "Documentation must exist for ";
 
-    public static defaultArguments = [
-        ARGUMENT_CLASSES,
-        ARGUMENT_FUNCTIONS,
-        ARGUMENT_METHODS,
-        ARGUMENT_PROPERTIES,
-    ] as DocType[];
+    public static defaultArguments = {
+        [ARGUMENT_CLASSES]: true,
+        [ARGUMENT_FUNCTIONS]: true,
+        [ARGUMENT_METHODS]: {
+            [DESCRIPTOR_TAGS]: {
+                [TAGS_FOR_CONTENT]: {
+                    see: ".*",
+                },
+                [TAGS_FOR_EXISTENCE]: [
+                    "deprecated",
+                    "inheritdoc",
+                ],
+            },
+        },
+        [ARGUMENT_PROPERTIES]: {
+            [DESCRIPTOR_TAGS]: {
+                [TAGS_FOR_CONTENT]: {
+                    see: ".*",
+                },
+                [TAGS_FOR_EXISTENCE]: [
+                    "deprecated",
+                    "inheritdoc",
+                ],
+            },
+        },
+    };
 
     public static ARGUMENT_DESCRIPTOR_BLOCK = {
         properties: {
+            [DESCRIPTOR_TAGS]: {
+                properties: {
+                    [TAGS_FOR_CONTENT]: {
+                        items: {
+                            type: "string",
+                        },
+                        type: "object",
+                    },
+                    [TAGS_FOR_EXISTENCE]: {
+                        items: {
+                            type: "string",
+                        },
+                        type: "array",
+                    },
+                },
+            },
             [DESCRIPTOR_VISIBILITIES]: {
                 enum: [
                     ALL,
@@ -114,6 +141,22 @@ export class Rule extends Lint.Rules.TypedRule {
 
     public static ARGUMENT_DESCRIPTOR_CLASS = {
         properties: {
+            [DESCRIPTOR_TAGS]: {
+                properties: {
+                    [TAGS_FOR_CONTENT]: {
+                        items: {
+                            type: "string",
+                        },
+                        type: "object",
+                    },
+                    [TAGS_FOR_EXISTENCE]: {
+                        items: {
+                            type: "string",
+                        },
+                        type: "array",
+                    },
+                },
+            },
             [DESCRIPTOR_LOCATIONS]: {
                 enum: [
                     ALL,
@@ -155,10 +198,14 @@ export class Rule extends Lint.Rules.TypedRule {
                         * \`"${ALL}"\`
                         * \`"${LOCATION_INSTANCE}"\`
                         * \`"${LOCATION_STATIC}"\`
-                * All other types may specify \`"${DESCRIPTOR_VISIBILITIES}"\`:
+                * Other types may specify \`"${DESCRIPTOR_VISIBILITIES}"\`:
                     * \`"${ALL}"\`
                     * \`"${VISIBILITY_EXPORTED}"\`
                     * \`"${VISIBILITY_INTERNAL}"\`
+                * All types may also provide \`"${DESCRIPTOR_TAGS}"\`
+                  with members specifying tags that allow the docs to not have a body.
+                    * \`"${TAGS_FOR_CONTENT}"\`: Object mapping tags to \`RegExp\` bodies content allowed to count as complete docs.
+                    * \`"${TAGS_FOR_EXISTENCE}"\`: Array of tags that must only exist to count as complete docs.
 
             Types that may be enabled are:
 
@@ -177,6 +224,17 @@ export class Rule extends Lint.Rules.TypedRule {
                 anyOf: [
                     {
                         enum: Rule.defaultArguments,
+                        options: [
+                            ARGUMENT_CLASSES,
+                            ARGUMENT_ENUMS,
+                            ARGUMENT_FUNCTIONS,
+                            ARGUMENT_INTERFACES,
+                            ARGUMENT_METHODS,
+                            ARGUMENT_NAMESPACES,
+                            ARGUMENT_PROPERTIES,
+                            ARGUMENT_TYPES,
+                            ARGUMENT_VARIABLES,
+                        ],
                         type: "string",
                     },
                     {
@@ -210,6 +268,12 @@ export class Rule extends Lint.Rules.TypedRule {
                         [DESCRIPTOR_LOCATIONS]: LOCATION_INSTANCE,
                         [DESCRIPTOR_PRIVACIES]: [PRIVACY_PUBLIC, PRIVACY_PROTECTED],
                     },
+                    [DESCRIPTOR_TAGS]: {
+                        [TAGS_FOR_CONTENT]: {
+                            see: ["#.*"],
+                        },
+                        [TAGS_FOR_EXISTENCE]: ["inheritdoc"],
+                    },
                 },
             ],
         ],
@@ -218,115 +282,23 @@ export class Rule extends Lint.Rules.TypedRule {
     };
     /* tslint:enable:object-literal-sort-keys */
 
+    private readonly exclusionFactory = new ExclusionFactory();
+
     public applyWithProgram(sourceFile: ts.SourceFile, program: ts.Program): Lint.RuleFailure[] {
         const options = this.getOptions();
         const completedDocsWalker = new CompletedDocsWalker(sourceFile, options, program);
 
-        completedDocsWalker.setRequirements(this.getRequirements(options.ruleArguments));
+        completedDocsWalker.setExclusionsMap(this.getExclusionsMap(options.ruleArguments));
 
         return this.applyWithWalker(completedDocsWalker);
     }
 
-    private getRequirements(ruleArguments: Array<DocType | IRequirementDescriptors>): Map<DocType, BlockOrClassRequirement> {
+    private getExclusionsMap(ruleArguments: Array<DocType | IExclusionDescriptors>): Map<DocType, IExclusion[]> {
         if (ruleArguments.length === 0) {
-            ruleArguments = Rule.defaultArguments;
+            ruleArguments = [Rule.defaultArguments];
         }
 
-        return Requirement.constructRequirements(ruleArguments);
-    }
-}
-
-abstract class Requirement<TDescriptor extends RequirementDescriptor> {
-    public static constructRequirements(ruleArguments: Array<DocType | IRequirementDescriptors>): Map<DocType, BlockOrClassRequirement> {
-        const requirements: Map<DocType, BlockOrClassRequirement> = new Map();
-
-        for (const ruleArgument of ruleArguments) {
-            Requirement.addRequirements(requirements, ruleArgument);
-        }
-
-        return requirements;
-    }
-
-    private static addRequirements(requirements: Map<DocType, BlockOrClassRequirement>, descriptor: DocType | IRequirementDescriptors) {
-        if (typeof descriptor === "string") {
-            requirements.set(descriptor, new BlockRequirement());
-            return;
-        }
-
-        for (const type in descriptor) {
-            if (descriptor.hasOwnProperty(type)) {
-                requirements.set(
-                    type as DocType,
-                    (type === "methods" || type === "properties")
-                        ? new ClassRequirement(descriptor[type])
-                        : new BlockRequirement(descriptor[type]));
-            }
-        }
-    }
-
-    protected constructor(public readonly descriptor: TDescriptor = {} as TDescriptor) { }
-
-    public abstract shouldNodeBeDocumented(node: ts.Declaration): boolean;
-
-    protected createSet<T extends All | string>(values?: T[]): Set<T> {
-        if (!values || values.length === 0) {
-            values = [ALL as T];
-        }
-
-        return new Set(values);
-    }
-}
-
-class BlockRequirement extends Requirement<IBlockRequirementDescriptor> {
-    public readonly visibilities: Set<Visibility> = this.createSet(this.descriptor.visibilities);
-
-    public shouldNodeBeDocumented(node: ts.Declaration): boolean {
-        if (this.visibilities.has(ALL)) {
-            return true;
-        }
-
-        if (Lint.hasModifier(node.modifiers, ts.SyntaxKind.ExportKeyword)) {
-            return this.visibilities.has(VISIBILITY_EXPORTED);
-        }
-
-        return this.visibilities.has(VISIBILITY_INTERNAL);
-    }
-}
-
-class ClassRequirement extends Requirement<IClassRequirementDescriptor> {
-    public readonly locations: Set<Location> = this.createSet(this.descriptor.locations);
-    public readonly privacies: Set<Privacy> = this.createSet(this.descriptor.privacies);
-
-    public shouldNodeBeDocumented(node: ts.Declaration) {
-        return this.shouldLocationBeDocumented(node) && this.shouldPrivacyBeDocumented(node);
-    }
-
-    private shouldLocationBeDocumented(node: ts.Declaration) {
-        if (this.locations.has(ALL)) {
-            return true;
-        }
-
-        if (Lint.hasModifier(node.modifiers, ts.SyntaxKind.StaticKeyword)) {
-            return this.locations.has(LOCATION_STATIC);
-        }
-
-        return this.locations.has(LOCATION_INSTANCE);
-    }
-
-    private shouldPrivacyBeDocumented(node: ts.Declaration) {
-        if (this.privacies.has(ALL)) {
-            return true;
-        }
-
-        if (Lint.hasModifier(node.modifiers, ts.SyntaxKind.PrivateKeyword)) {
-            return this.privacies.has(PRIVACY_PRIVATE);
-        }
-
-        if (Lint.hasModifier(node.modifiers, ts.SyntaxKind.ProtectedKeyword)) {
-            return this.privacies.has(PRIVACY_PROTECTED);
-        }
-
-        return Lint.hasModifier(node.modifiers, ts.SyntaxKind.PublicKeyword);
+        return this.exclusionFactory.constructExclusionsMap(ruleArguments);
     }
 }
 
@@ -335,10 +307,10 @@ class CompletedDocsWalker extends Lint.ProgramAwareRuleWalker {
         export: "exported",
     };
 
-    private requirements: Map<DocType, BlockOrClassRequirement>;
+    private exclusionsMap: Map<DocType, IExclusion[]>;
 
-    public setRequirements(requirements: Map<DocType, BlockOrClassRequirement>): void {
-        this.requirements = requirements;
+    public setExclusionsMap(exclusionsMap: Map<DocType, IExclusion[]>): void {
+        this.exclusionsMap = exclusionsMap;
     }
 
     public visitClassDeclaration(node: ts.ClassDeclaration): void {
@@ -391,24 +363,37 @@ class CompletedDocsWalker extends Lint.ProgramAwareRuleWalker {
             return;
         }
 
-        const requirement = this.requirements.get(nodeType);
-        if (!requirement || !requirement.shouldNodeBeDocumented(node)) {
+        const exclusions = this.exclusionsMap.get(nodeType);
+        if (!exclusions) {
             return;
         }
 
-        const symbol = this.getTypeChecker().getSymbolAtLocation(node.name);
-        if (!symbol) {
-            return;
+        for (const exclusion of exclusions) {
+            if (exclusion.excludes(node)) {
+                return;
+            }
         }
 
-        const comments = symbol.getDocumentationComment();
-        this.checkComments(node, nodeType, comments);
+        if (this.declarationHasNoComments(node, this.getTypeChecker())) {
+            this.addDocumentationFailure(node, nodeType);
+        }
     }
 
-    private checkComments(node: ts.Declaration, nodeDescriptor: string, comments: ts.SymbolDisplayPart[]) {
-        if (comments.map((comment: ts.SymbolDisplayPart) => comment.text).join("").trim() === "") {
-            this.addDocumentationFailure(node, nodeDescriptor);
+    private getCommentLines(node: ts.Declaration, typeChecker: ts.TypeChecker) {
+        if (node.name === undefined) {
+            return [];
         }
+
+        const symbol = typeChecker.getSymbolAtLocation(node.name);
+        if (symbol === undefined) {
+            return [];
+        }
+
+        return symbol.getDocumentationComment();
+    }
+
+    private declarationHasNoComments(node: ts.Declaration, typeChecker: ts.TypeChecker) {
+        return this.getCommentLines(node, typeChecker).map((line) => line.text).join("").trim() === "";
     }
 
     private addDocumentationFailure(node: ts.Declaration, nodeType: string): void {
