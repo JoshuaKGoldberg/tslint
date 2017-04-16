@@ -270,7 +270,7 @@ export class Rule extends Lint.Rules.TypedRule {
                     },
                     [DESCRIPTOR_TAGS]: {
                         [TAGS_FOR_CONTENT]: {
-                            see: ["#.*"],
+                            see: "#.*",
                         },
                         [TAGS_FOR_EXISTENCE]: ["inheritdoc"],
                     },
